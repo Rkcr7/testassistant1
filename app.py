@@ -14,12 +14,15 @@ from twilio.rest import Client
 
 app = Flask(__name__)
 count=0
+list1=['airport', 'amusement_park', 'aquarium', 'art_gallery', 'atm', 'bakery', 'bank', 'bar', 'beauty_salon', 'bicycle_store', 'book_store', 'bowling', 'bus_station', 'cafe', 'campground', 'car_dealer', 'car_rental', 'car_repair', 'car_wash', 'casino', 'cemetery', ' church', 'cinema', 'city_hall', 'clothing_store', 'convenience_store', 'courthouse', 'dentist', 'department_store', 'doctor', 'electrician', 'electronics_store', 'embassy', 'fire_station', 'flowers_store', 'funeral_service','furniture_store', 'gas_station', 'government_office', 'grocery_store', 'gym', 'hairdressing_salon', 'hardware_store', 'homegoodsstore', 'hospital', 'insurance_agency', 'jewelry_store', 'laundry', 'lawyer', 'library', 'liquor_store', 'locksmith', 'lodging', 'mosque', 'museum', 'night_club', 'park', 'parking', 'pet_store', 'pharmacy', 'plumber', 'police_station', 'post_office', 'primary_school', 'rail_station', 'realestateagency', 'restaurant', 'rv_park', 'school', 'secondary_school','shoe_store', 'shopping_center', 'spa', 'stadium', 'storage', 'store', 'subway_station', 'supermarket', 'synagogue', 'taxi_stand', 'temple', 'tourist_attraction','train_station', 'transit_station', 'travel_agency', 'university', 'veterinarian', 'zoo']
+
 
 
 #db.create_all()
 
 
-
+lati=''
+long=''
 EMAIL_ADDRESS = '<your gmail address>'
 EMAIL_PASSWORD = '<"your gmail pass">'
 
@@ -34,7 +37,10 @@ def hello():
 def sms_reply():
     """Respond to incoming calls with a simple text message."""
     # Fetch the message
-    msg = request.form.get('Body')
+    msg = request.form.get('Body').lower()
+    sms_reply.ph = request.form.get("From")
+    lat, lon = request.form.get('Latitude'), request.form.get('Longitude')
+    global lati, long
     global count
     # Create reply
     sms_reply.resp = MessagingResponse()
@@ -70,6 +76,38 @@ def sms_reply():
         print("count:", count)
         import requests
         requests.get('<Your ngrok or server link>/dial/' + sms_reply.sms)
+
+
+    elif any(c in msg for c in list1):
+        import requests
+
+
+        url = "https://trueway-places.p.rapidapi.com/FindPlacesNearby"
+
+        querystring = {"location": lati+","+long, "type": msg, "radius": "1200", "language": "en"}
+
+        headers = {
+            'x-rapidapi-key': "<your TrueWay Places rapid api key>",
+            'x-rapidapi-host': "trueway-places.p.rapidapi.com"
+        }
+
+        response = requests.request("GET", url, headers=headers, params=querystring)
+        data = response.json()
+        ids = data['results']
+        for i in range(0, len(ids)-1):
+
+            location=str(ids[i]["location"]["lat"])+","+str(ids[i]["location"]["lng"])
+            link="http://maps.google.com/maps?q="+location
+            name=" *_Name:_* "+ids[i]["name"]+"\n *_Address:_* "+(response.json()["results"][i]["address"])+"\n *_Distance (Approx):_* "+str(ids[i]["distance"])+"mt"+"\n\n *_Location:_* "+link
+            print(name)
+
+            #print("Distance:", ids[i]['distance'],)
+            sms_reply.resp.message(name)
+            #sms_reply.resp.message(ids[i]['address'])
+
+            #sms_reply.resp.message(str(ids[i]['distance']))
+        return str(sms_reply.resp)
+
 
     elif 'user1' in msg:
         match = re.search(r'[\w\.-]+@[\w\.-]+', msg)
