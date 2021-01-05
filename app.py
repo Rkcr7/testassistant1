@@ -13,7 +13,7 @@ import re
 from twilio.rest import Client
 
 app = Flask(__name__)
-
+count=0
 
 
 #db.create_all()
@@ -35,7 +35,7 @@ def sms_reply():
     """Respond to incoming calls with a simple text message."""
     # Fetch the message
     msg = request.form.get('Body')
-
+    global count
     # Create reply
     sms_reply.resp = MessagingResponse()
     twiml = VoiceResponse()
@@ -45,13 +45,31 @@ def sms_reply():
 
     #resp.message("You said: {}".format(msg))
     if len(msg) == 12:
+        print("first count")
+        count += 1
 
-        sms_reply.z = phonenumbers.parse( msg,"IN")
+        sms_reply.z = phonenumbers.parse(msg, "IN")
         if (phonenumbers.is_valid_number(sms_reply.z)) is True:
-            print("valid:",sms_reply.z)
-            requests.get('<your ngrok or your localhost link>/dial/' + msg)
-        else:
-            print('not valid number')
+            print("valid:", sms_reply.z)
+
+            sms_reply.sms = msg
+            print(sms_reply.sms)
+            sms_reply.id = str(random.randint(1000, 9999))
+            print(sms_reply.id)
+            client = Client(account_sid, auth_token)
+            message = client.messages.create(
+                from_='whatsapp:+<your twilio number>',
+                body=(sms_reply.id),
+                to='whatsapp:+' + sms_reply.sms
+            )
+
+            print(message.sid)
+
+    elif count in range(1, 999999) and msg == sms_reply.id:
+
+        print("count:", count)
+        import requests
+        requests.get('<Your ngrok or server link>/dial/' + sms_reply.sms)
 
     elif 'user1' in msg:
         match = re.search(r'[\w\.-]+@[\w\.-]+', msg)
@@ -115,7 +133,7 @@ def dial(phone_number):
 
     call = client.calls.create(
 
-        url=' <your ngrok or your localhost link>/incoming',
+        url=' <your ngrok or your server link>/incoming',
         to='+{}'.format(phone_number),
         from_='<your twilio phone number>'
     )
